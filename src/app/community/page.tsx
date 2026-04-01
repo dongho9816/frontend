@@ -1,22 +1,41 @@
 "use client";
 
-// TODO: 필요한 import를 추가하세요
-// - useState, useEffect (react)
-// - useRouter (next/navigation)
-// - getPosts (lib/mockData)
-// - Post 타입 (types/post)
-// - PostCard 컴포넌트 (components/PostCard)
+import { useState, useEffect } from "react";
+import { Post } from "@/types/post";
+import { getPosts } from "@/lib/mockData"; // 금고에서 글 가져오는 기계
+import PostCard from "@/components/PostCard"; // 아까 만든 명함 부품
+import { useRouter } from "next/navigation";
 
 export default function CommunityPage() {
-  // TODO: useState로 posts 상태를 만드세요
+  const [posts, setPosts] = useState<Post[]>([]); // 게시글들을 담을 바구니
+  const router = useRouter(); // 글쓰기 페이지로 이동할 리모컨
 
-  // TODO: useEffect로 localStorage에서 게시글 목록을 불러오세요
 
-  return (
-    <div>
-      <h1>커뮤니티</h1>
-      {/* TODO: "글 작성" 버튼 → /community/write로 이동 */}
-      {/* TODO: posts 배열을 map으로 돌면서 PostCard 렌더링 */}
+useEffect(() => {
+  // 페이지가 로드되면 금고(localStorage)에서 글을 가져와 바구니에 담음
+  const savedPosts = getPosts();
+  setPosts(savedPosts);
+}, []);
+
+return (
+  <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <h1>🏛️ 커뮤니티</h1>
+      <button 
+        onClick={() => router.push('/community/write')}
+        style={{ padding: '10px 20px', cursor: 'pointer' }}
+      >
+        글 쓰기
+      </button>
     </div>
-  );
-}
+    <hr style={{ margin: '20px 0' }} />
+
+    {/* 바구니(posts)에 담긴 글 개수만큼 PostCard를 반복해서 그려라! */}
+    <div>
+      {posts.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </div>
+  </div>
+);
+} 
