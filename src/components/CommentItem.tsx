@@ -3,12 +3,14 @@ import { Comment } from "@/types/post";
 interface CommentItemProps {
   comment: Comment;
   onDelete?: (commentId: string) => void;
+  currentUsername?: string | null;
 }
 
-export default function CommentItem({ comment, onDelete }: CommentItemProps) {
+export default function CommentItem({ comment, onDelete, currentUsername }: CommentItemProps) {
   const dateLabel = `${String(new Date(comment.createdAt).getMonth() + 1).padStart(2, "0")}.${String(
     new Date(comment.createdAt).getDate()
   ).padStart(2, "0")}`;
+  const canDelete = Boolean(onDelete && currentUsername && currentUsername === comment.author);
 
   return (
     <div className="rounded-lg border border-border/50 bg-muted/25 px-4 py-3 sm:px-4 sm:py-3.5">
@@ -22,10 +24,10 @@ export default function CommentItem({ comment, onDelete }: CommentItemProps) {
             {dateLabel}
           </time>
         </div>
-        {onDelete ? (
+        {canDelete ? (
           <button
             type="button"
-            onClick={() => onDelete(comment.id)}
+            onClick={() => onDelete?.(comment.id)}
             className="rounded-md border border-border/70 px-2 py-1 text-xs text-muted-foreground transition hover:bg-secondary/60 hover:text-foreground"
           >
             삭제

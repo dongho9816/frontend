@@ -5,6 +5,19 @@ export interface Comment {
   createdAt: string;
 }
 
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
 export type PostSection = "notice" | "free";
 
 // 목록 조회용 (commentCount가 숫자로 옴)

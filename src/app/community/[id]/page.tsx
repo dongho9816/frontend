@@ -8,6 +8,7 @@ import { Comment, PostDetail } from "@/types/post";
 import { PageContainer } from "@/components/PageContainer";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingBlock } from "@/components/LoadingBlock";
+import { useAuthStore } from "@/store/authStore";
 
 type LoadState = "loading" | "notfound" | "ready" | "error";
 
@@ -19,14 +20,30 @@ function formatPostDate(iso: string) {
   });
 }
 
+function resolveLikedFlag(postData: any): boolean {
+  // 서버 응답 필드명이 프로젝트마다 다를 수 있어 후보 키를 순차 확인
+  if (typeof postData?.isLiked === "boolean") return postData.isLiked;
+  if (typeof postData?.liked === "boolean") return postData.liked;
+  if (typeof postData?.likedByMe === "boolean") return postData.likedByMe;
+  return false;
+}
+
 export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
+  const user = useAuthStore((state) => state.user);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const initialize = useAuthStore((state) => state.initialize);
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [commentInput, setCommentInput] = useState("");
   const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [hasLiked, setHasLiked] = useState(false);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
   useEffect(() => {
     if (!id) {
@@ -39,6 +56,7 @@ export default function PostDetailPage() {
       try {
         const data = await fetchPost(id);
         setPost(data);
+        setHasLiked(resolveLikedFlag(data));
         setLoadState("ready");
       } catch (error: any) {
         if (error?.response?.status === 404) {
@@ -57,6 +75,11 @@ export default function PostDetailPage() {
     try {
       const updated = await toggleLike(post.id);
       setPost(updated);
+      const hasServerLikedFlag =
+        typeof updated?.isLiked === "boolean" ||
+        typeof updated?.liked === "boolean" ||
+        typeof updated?.likedByMe === "boolean";
+      setHasLiked(hasServerLikedFlag ? resolveLikedFlag(updated) : !hasLiked);
     } catch {
       alert("좋아요 처리 중 오류가 발생했습니다.");
     }
@@ -70,7 +93,6 @@ export default function PostDetailPage() {
     }
     try {
       const newComment: Comment = await createComment(post.id, {
-        author: "익명 사자",
         content: commentInput.trim(),
       });
       setPost((prev) => (prev ? { ...prev, comments: [...prev.comments, newComment] } : prev));
@@ -166,13 +188,15 @@ export default function PostDetailPage() {
           <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             {post.title}
           </h1>
-          <button
-            type="button"
-            onClick={handleDeletePost}
-            className="shrink-0 inline-flex items-center rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20 sm:text-sm"
-          >
-            게시글 삭제
-          </button>
+          {user?.username === post.author ? (
+            <button
+              type="button"
+              onClick={handleDeletePost}
+              className="shrink-0 inline-flex items-center rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20 sm:text-sm"
+            >
+              게시글 삭제
+            </button>
+          ) : null}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
           <span className="text-foreground/90">{post.author}</span>
@@ -189,7 +213,7 @@ export default function PostDetailPage() {
             onClick={handleLike}
             className="inline-flex items-center gap-2 rounded-lg border border-border/70 bg-secondary/40 px-4 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-secondary/70"
           >
-            <span aria-hidden>❤️</span>
+            <span aria-hidden>{hasLiked ? "❤️" : "🤍"}</span>
             좋아요 <span className="tabular-nums text-muted-foreground">{post.likes}</span>
           </button>
         </div>
@@ -208,27 +232,45 @@ export default function PostDetailPage() {
             />
           ) : (
             post.comments.map((comment) => (
-              <CommentItem key={comment.id} comment={comment} onDelete={handleDeleteComment} />
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                onDelete={handleDeleteComment}
+                currentUsername={user?.username ?? null}
+              />
             ))
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            value={commentInput}
-            onChange={(e) => setCommentInput(e.target.value)}
-            placeholder="댓글을 입력하세요"
-            className="min-w-0 flex-1 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm outline-none transition placeholder:text-muted-foreground/70 focus:border-ring focus:ring-1 focus:ring-ring"
-          />
-          <button
-            type="button"
-            onClick={handleComment}
-            className="shrink-0 rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-          >
-            작성
-          </button>
-        </div>
+        {isLoggedIn ? (
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              value={commentInput}
+              onChange={(e) => setCommentInput(e.target.value)}
+              placeholder="댓글을 입력하세요"
+              className="min-w-0 flex-1 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm outline-none transition placeholder:text-muted-foreground/70 focus:border-ring focus:ring-1 focus:ring-ring"
+            />
+            <button
+              type="button"
+              onClick={handleComment}
+              className="shrink-0 rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            >
+              작성
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-lg border border-border/70 bg-card/30 px-4 py-3 text-sm text-muted-foreground">
+            로그인 후 댓글을 작성할 수 있습니다.{" "}
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="font-medium text-foreground underline underline-offset-4"
+            >
+              로그인
+            </button>
+          </div>
+        )}
       </section>
     </PageContainer>
   );

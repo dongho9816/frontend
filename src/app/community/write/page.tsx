@@ -1,17 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Post, PostSection } from "@/types/post";
+import { PostSection } from "@/types/post";
 import { createPost } from "@/lib/api";
 import { PageContainer } from "@/components/PageContainer";
+import { useAuthStore } from "@/store/authStore";
 
 export default function WritePage() {
   const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const initialize = useAuthStore((state) => state.initialize);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [section, setSection] = useState<PostSection>("free");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.replace("/login");
+    }
+  }, [isLoggedIn, router]);
 
   const handleSubmit = async () => {
     // 이미 제출 중이면 중복 클릭 방지
@@ -23,15 +36,10 @@ export default function WritePage() {
     }
     setSubmitting(true);
     try {
-      const payload: Omit<Post, "id" | "createdAt"> = {
+      await createPost({
         title: title.trim(),
         content: content.trim(),
-        author: "익명 사자",
-        likes: 0,
-        comments: [],
-        section,
-      };
-      await createPost(payload);
+      });
       router.push("/community");
     } catch {
       alert("글 저장 중 오류가 발생했습니다.");

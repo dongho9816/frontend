@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Noto_Sans_KR } from "next/font/google";
 import { cn } from "@/lib/utils";
+import AppHeader from "@/components/AppHeader";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
@@ -21,7 +22,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className={cn("dark font-sans", notoSansKr.variable)}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <AppHeader />
+        {children}
+      </body>
     </html>
   );
 }
