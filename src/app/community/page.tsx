@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Post, PostSection } from "@/types/post";
-import { getPosts } from "@/lib/mockData";
+import { fetchPosts } from "@/lib/api";
 import PostCard from "@/components/PostCard";
 import { useRouter } from "next/navigation";
 import { PageContainer } from "@/components/PageContainer";
@@ -17,12 +17,22 @@ export default function CommunityPage() {
   const router = useRouter();
 
   useEffect(() => {
-    try {
-      setPosts(getPosts());
-      setStatus("ready");
-    } catch {
-      setStatus("error");
-    }
+    const loadPosts = async () => {
+      try {
+        const data = await fetchPosts();
+        const normalizedPosts = (data as Post[]).map((post) => ({
+          ...post,
+          section: post.section ?? "free",
+          comments: post.comments ?? [],
+        }));
+        setPosts(normalizedPosts);
+        setStatus("ready");
+      } catch {
+        setStatus("error");
+      }
+    };
+
+    loadPosts();
   }, []);
 
   const filteredPosts = posts.filter((post) => post.section === activeSection);
@@ -96,7 +106,7 @@ export default function CommunityPage() {
       ) : status === "error" ? (
         <EmptyState
           title="목록을 불러오지 못했습니다"
-          description="저장된 데이터에 문제가 있을 수 있습니다. 브라우저 저장소를 확인하거나 새로고침해 주세요."
+          description="게시글 목록 API 호출에 실패했습니다. 잠시 후 다시 시도해 주세요."
         />
       ) : posts.length === 0 ? (
         <EmptyState

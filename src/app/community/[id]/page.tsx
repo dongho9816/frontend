@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import CommentItem from "@/components/CommentItem";
-import { getPosts, savePosts } from "@/lib/mockData";
-import { fetchPost } from "@/lib/api";
+import { createComment, deleteComment, deletePost, fetchPost, toggleLike } from "@/lib/api";
 import { Comment, PostDetail } from "@/types/post";
 import { PageContainer } from "@/components/PageContainer";
 import { EmptyState } from "@/components/EmptyState";
@@ -53,64 +52,58 @@ export default function PostDetailPage() {
     loadPost();
   }, [id]);
 
-  const handleLike = () => {
+  const handleLike = async () => {
     if (!post) return;
-    const posts = getPosts();
-    const updatedPosts = posts.map((item) =>
-      item.id === post.id ? { ...item, likes: item.likes + 1 } : item
-    );
-    savePosts(updatedPosts);
-    const updatedPost = updatedPosts.find((item) => item.id === post.id) ?? null;
-    setPost(updatedPost);
+    try {
+      const updated = await toggleLike(post.id);
+      setPost(updated);
+    } catch {
+      alert("좋아요 처리 중 오류가 발생했습니다.");
+    }
   };
 
-  const handleComment = () => {
+  const handleComment = async () => {
     if (!post) return;
     if (!commentInput.trim()) {
       alert("댓글 내용을 입력해주세요!");
       return;
     }
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      content: commentInput.trim(),
-      author: "익명 사자",
-      createdAt: new Date().toISOString(),
-    };
-    const posts = getPosts();
-    const updatedPosts = posts.map((item) =>
-      item.id === post.id ? { ...item, comments: [...item.comments, newComment] } : item
-    );
-    savePosts(updatedPosts);
-    const updatedPost = updatedPosts.find((item) => item.id === post.id) ?? null;
-    setPost(updatedPost);
-    setCommentInput("");
+    try {
+      const newComment: Comment = await createComment(post.id, {
+        author: "익명 사자",
+        content: commentInput.trim(),
+      });
+      setPost((prev) => (prev ? { ...prev, comments: [...prev.comments, newComment] } : prev));
+      setCommentInput("");
+    } catch {
+      alert("댓글 작성 중 오류가 발생했습니다.");
+    }
   };
 
-  const handleDeletePost = () => {
+  const handleDeletePost = async () => {
     if (!post) return;
     const confirmed = confirm("이 게시글을 삭제하시겠습니까?");
     if (!confirmed) return;
-
-    const posts = getPosts();
-    const updatedPosts = posts.filter((item) => item.id !== post.id);
-    savePosts(updatedPosts);
-    router.push("/community");
+    try {
+      await deletePost(post.id);
+      router.push("/community");
+    } catch {
+      alert("게시글 삭제 중 오류가 발생했습니다.");
+    }
   };
 
-  const handleDeleteComment = (commentId: string) => {
+  const handleDeleteComment = async (commentId: string) => {
     if (!post) return;
     const confirmed = confirm("이 댓글을 삭제하시겠습니까?");
     if (!confirmed) return;
-
-    const posts = getPosts();
-    const updatedPosts = posts.map((item) =>
-      item.id === post.id
-        ? { ...item, comments: item.comments.filter((comment) => comment.id !== commentId) }
-        : item
-    );
-    savePosts(updatedPosts);
-    const updatedPost = updatedPosts.find((item) => item.id === post.id) ?? null;
-    setPost(updatedPost);
+    try {
+      await deleteComment(commentId);
+      setPost((prev) =>
+        prev ? { ...prev, comments: prev.comments.filter((comment) => comment.id !== commentId) } : prev
+      );
+    } catch {
+      alert("댓글 삭제 중 오류가 발생했습니다.");
+    }
   };
 
   if (loadState === "loading") {

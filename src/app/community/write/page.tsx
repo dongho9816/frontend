@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Post, PostSection } from "@/types/post";
-import { getPosts, savePosts } from "@/lib/mockData";
+import { createPost } from "@/lib/api";
 import { PageContainer } from "@/components/PageContainer";
 
 export default function WritePage() {
@@ -13,7 +13,7 @@ export default function WritePage() {
   const [section, setSection] = useState<PostSection>("free");
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // 이미 제출 중이면 중복 클릭 방지
     if (submitting) return;
 
@@ -23,18 +23,15 @@ export default function WritePage() {
     }
     setSubmitting(true);
     try {
-      const newPost: Post = {
-        id: Date.now().toString(),
+      const payload: Omit<Post, "id" | "createdAt"> = {
         title: title.trim(),
         content: content.trim(),
         author: "익명 사자",
-        createdAt: new Date().toISOString(),
         likes: 0,
         comments: [],
         section,
       };
-      const allPosts = getPosts();
-      savePosts([newPost, ...allPosts]);
+      await createPost(payload);
       router.push("/community");
     } catch {
       alert("글 저장 중 오류가 발생했습니다.");
