@@ -4,21 +4,53 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import CommentItem from "@/components/CommentItem";
 import { getPosts, savePosts } from "@/lib/mockData";
-import { Comment, Post } from "@/types/post";
+import { fetchPost } from "@/lib/api";
+import { Comment, PostDetail } from "@/types/post";
+import { PageContainer } from "@/components/PageContainer";
+import { EmptyState } from "@/components/EmptyState";
+import { LoadingBlock } from "@/components/LoadingBlock";
+
+type LoadState = "loading" | "notfound" | "ready" | "error";
+
+function formatPostDate(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
 
 export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params?.id as string;
+  const id = params?.id as string | undefined;
 
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<PostDetail | null>(null);
   const [commentInput, setCommentInput] = useState("");
+  const [loadState, setLoadState] = useState<LoadState>("loading");
 
   useEffect(() => {
-    if (!id) return;
-    const posts = getPosts();
-    const foundPost = posts.find((item) => item.id === id) ?? null;
-    setPost(foundPost);
+    if (!id) {
+      setLoadState("notfound");
+      return;
+    }
+
+    const loadPost = async () => {
+      setLoadState("loading");
+      try {
+        const data = await fetchPost(id);
+        setPost(data);
+        setLoadState("ready");
+      } catch (error: any) {
+        if (error?.response?.status === 404) {
+          setLoadState("notfound");
+        } else {
+          setLoadState("error");
+        }
+      }
+    };
+
+    loadPost();
   }, [id]);
 
   const handleLike = () => {
@@ -33,96 +65,178 @@ export default function PostDetailPage() {
   };
 
   const handleComment = () => {
-    // 상세 페이지가 비정상 상태(게시글 없음)일 수 있으므로 방어 코드로 즉시 종료
     if (!post) return;
-
-    // 사용자가 공백만 입력한 경우를 막기 위해 trim()으로 실제 텍스트가 있는지 확인
     if (!commentInput.trim()) {
       alert("댓글 내용을 입력해주세요!");
       return;
     }
-
-    // 댓글 1개를 새로 생성한다.
-    // - id: 댓글 고유 식별자(현재 시간값 사용)
-    // - content: 앞뒤 공백 제거한 실제 입력 내용
-    // - author: 현재는 로그인 기능이 없어서 고정 닉네임 사용
-    // - createdAt: 댓글 작성 시각(문자열) 저장
     const newComment: Comment = {
       id: Date.now().toString(),
       content: commentInput.trim(),
       author: "익명 사자",
       createdAt: new Date().toISOString(),
     };
-
-    // localStorage에 저장된 전체 게시글 목록을 가져온다.
     const posts = getPosts();
-
-    // 전체 게시글을 순회하면서 "현재 보고 있는 게시글(post.id)"만 댓글을 추가해 새 배열 생성
-    // 불변성(원본 직접 수정 금지)을 지키기 위해 map + spread 문법으로 새 객체를 만든다.
     const updatedPosts = posts.map((item) =>
       item.id === post.id ? { ...item, comments: [...item.comments, newComment] } : item
     );
-
-    // 수정된 전체 게시글 목록을 localStorage에 다시 저장
     savePosts(updatedPosts);
-
-    // 방금 저장한 최신 데이터에서 현재 게시글을 다시 찾아 화면 상태를 갱신
-    // -> 댓글 개수가 즉시 UI에 반영됨
     const updatedPost = updatedPosts.find((item) => item.id === post.id) ?? null;
     setPost(updatedPost);
-
-    // 댓글 작성이 완료됐으므로 입력창 비우기
     setCommentInput("");
   };
 
-  if (!post) {
+  const handleDeletePost = () => {
+    if (!post) return;
+    const confirmed = confirm("이 게시글을 삭제하시겠습니까?");
+    if (!confirmed) return;
+
+    const posts = getPosts();
+    const updatedPosts = posts.filter((item) => item.id !== post.id);
+    savePosts(updatedPosts);
+    router.push("/community");
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    if (!post) return;
+    const confirmed = confirm("이 댓글을 삭제하시겠습니까?");
+    if (!confirmed) return;
+
+    const posts = getPosts();
+    const updatedPosts = posts.map((item) =>
+      item.id === post.id
+        ? { ...item, comments: item.comments.filter((comment) => comment.id !== commentId) }
+        : item
+    );
+    savePosts(updatedPosts);
+    const updatedPost = updatedPosts.find((item) => item.id === post.id) ?? null;
+    setPost(updatedPost);
+  };
+
+  if (loadState === "loading") {
     return (
-      <div style={{ padding: "20px", maxWidth: "700px", margin: "0 auto" }}>
-        <h1>게시글을 찾을 수 없습니다.</h1>
-        <button onClick={() => router.push("/community")} style={{ marginTop: "12px", padding: "8px 14px", cursor: "pointer" }}>
+      <PageContainer>
+        <LoadingBlock />
+        <LoadingBlock className="mt-4" />
+      </PageContainer>
+    );
+  }
+
+  if (loadState === "error") {
+    return (
+      <PageContainer className="flex min-h-[40dvh] flex-col justify-center">
+        <EmptyState
+          title="게시글을 불러오지 못했습니다"
+          description="데이터를 읽는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+        />
+        <button
+          type="button"
+          onClick={() => router.push("/community")}
+          className="mt-6 rounded-lg border border-border/80 bg-secondary/50 px-4 py-2.5 text-sm font-medium text-secondary-foreground"
+        >
+          목록으로
+        </button>
+      </PageContainer>
+    );
+  }
+
+  if (loadState === "notfound" || !post) {
+    return (
+      <PageContainer className="flex min-h-[40dvh] flex-col justify-center">
+        <EmptyState
+          title="게시글을 찾을 수 없습니다"
+          description="삭제되었거나 주소가 잘못되었을 수 있습니다."
+        />
+        <button
+          type="button"
+          onClick={() => router.push("/community")}
+          className="mt-6 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground"
+        >
           목록으로 돌아가기
         </button>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div style={{ padding: "20px", maxWidth: "700px", margin: "0 auto" }}>
-      <button onClick={() => router.push("/community")} style={{ marginBottom: "16px", padding: "8px 14px", cursor: "pointer" }}>
+    <PageContainer>
+      <button
+        type="button"
+        onClick={() => router.push("/community")}
+        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
+      >
         ← 목록으로
       </button>
 
-      <h1 style={{ marginBottom: "8px" }}>{post.title}</h1>
-      <p style={{ color: "#666", marginBottom: "12px" }}>
-        작성자: {post.author} | 작성일: {new Date(post.createdAt).toLocaleString()}
-      </p>
-      <p style={{ whiteSpace: "pre-wrap", lineHeight: "1.6", marginBottom: "16px" }}>{post.content}</p>
+      <article className="rounded-2xl border border-border/60 bg-card/35 p-5 shadow-sm sm:p-7">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            {post.title}
+          </h1>
+          <button
+            type="button"
+            onClick={handleDeletePost}
+            className="shrink-0 inline-flex items-center rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20 sm:text-sm"
+          >
+            게시글 삭제
+          </button>
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">
+          <span className="text-foreground/90">{post.author}</span>
+          <span className="mx-2 text-border">·</span>
+          <time dateTime={post.createdAt}>{formatPostDate(post.createdAt)}</time>
+        </p>
+        <div className="mt-6 whitespace-pre-wrap text-pretty text-sm leading-relaxed text-foreground/95">
+          {post.content}
+        </div>
 
-      <button onClick={handleLike} style={{ padding: "8px 14px", cursor: "pointer", marginBottom: "24px" }}>
-        👍 좋아요 {post.likes}
-      </button>
+        <div className="mt-8 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleLike}
+            className="inline-flex items-center gap-2 rounded-lg border border-border/70 bg-secondary/40 px-4 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-secondary/70"
+          >
+            <span aria-hidden>❤️</span>
+            좋아요 <span className="tabular-nums text-muted-foreground">{post.likes}</span>
+          </button>
+        </div>
+      </article>
 
-      <h2 style={{ marginBottom: "10px" }}>댓글 {post.comments.length}개</h2>
-      <div style={{ marginBottom: "14px" }}>
-        {post.comments.length === 0 ? (
-          <p style={{ color: "#888" }}>아직 댓글이 없습니다. 첫 댓글을 작성해보세요!</p>
-        ) : (
-          post.comments.map((comment) => <CommentItem key={comment.id} comment={comment} />)
-        )}
-      </div>
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold text-foreground">
+          댓글 <span className="tabular-nums text-muted-foreground">{post.comments.length}</span>
+        </h2>
 
-      <div style={{ display: "flex", gap: "8px" }}>
-        <input
-          type="text"
-          value={commentInput}
-          onChange={(e) => setCommentInput(e.target.value)}
-          placeholder="댓글을 입력하세요"
-          style={{ flex: 1, padding: "10px", border: "1px solid #ccc", borderRadius: "6px" }}
-        />
-        <button onClick={handleComment} style={{ padding: "10px 16px", cursor: "pointer" }}>
-          작성
-        </button>
-      </div>
-    </div>
+        <div className="mt-4 space-y-3">
+          {post.comments.length === 0 ? (
+            <EmptyState
+              title="아직 댓글이 없습니다"
+              description="첫 댓글을 남겨 대화를 시작해 보세요."
+            />
+          ) : (
+            post.comments.map((comment) => (
+              <CommentItem key={comment.id} comment={comment} onDelete={handleDeleteComment} />
+            ))
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            value={commentInput}
+            onChange={(e) => setCommentInput(e.target.value)}
+            placeholder="댓글을 입력하세요"
+            className="min-w-0 flex-1 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm outline-none transition placeholder:text-muted-foreground/70 focus:border-ring focus:ring-1 focus:ring-ring"
+          />
+          <button
+            type="button"
+            onClick={handleComment}
+            className="shrink-0 rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+          >
+            작성
+          </button>
+        </div>
+      </section>
+    </PageContainer>
   );
 }

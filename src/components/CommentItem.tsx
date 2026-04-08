@@ -2,30 +2,37 @@ import { Comment } from "@/types/post";
 
 interface CommentItemProps {
   comment: Comment;
+  onDelete?: (commentId: string) => void;
 }
 
-export default function CommentItem({ comment }: CommentItemProps) {
+export default function CommentItem({ comment, onDelete }: CommentItemProps) {
+  const dateLabel = `${String(new Date(comment.createdAt).getMonth() + 1).padStart(2, "0")}.${String(
+    new Date(comment.createdAt).getDate()
+  ).padStart(2, "0")}`;
+
   return (
-    <div style={{ 
-      padding: '12px', 
-      borderBottom: '1px solid #eee', 
-      backgroundColor: '#f9f9f9',
-      borderRadius: '5px',
-      marginBottom: '8px'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-        {/* 작성자 이름 */}
-        <strong style={{ fontSize: '14px' }}>{comment.author}</strong>
-        {/* 작성 시간 */}
-        <span style={{ fontSize: '12px', color: '#888' }}>
-          {new Date(comment.createdAt).toLocaleString()}
-        </span>
+    <div className="rounded-lg border border-border/50 bg-muted/25 px-4 py-3 sm:px-4 sm:py-3.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+          <strong className="text-sm font-medium text-foreground">{comment.author}</strong>
+          <time
+            dateTime={comment.createdAt}
+            className="text-xs text-muted-foreground tabular-nums"
+          >
+            {dateLabel}
+          </time>
+        </div>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={() => onDelete(comment.id)}
+            className="rounded-md border border-border/70 px-2 py-1 text-xs text-muted-foreground transition hover:bg-secondary/60 hover:text-foreground"
+          >
+            삭제
+          </button>
+        ) : null}
       </div>
-      
-      {/* 댓글 내용 */}
-      <p style={{ margin: 0, fontSize: '15px', lineHeight: '1.4' }}>
-        {comment.content}
-      </p>
+      <p className="mt-2 text-sm leading-relaxed text-foreground/90">{comment.content}</p>
     </div>
   );
 }

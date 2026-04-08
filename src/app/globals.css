@@ -39,25 +39,26 @@
     --foreground: oklch(0.145 0 0);
 }
 
+/* 다크 톤앤톤: 은은한 블루그레이 바탕, 카드/보더로 층위 구분 */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --background: oklch(0.17 0.018 258);
+    --foreground: oklch(0.93 0.012 258);
+    --card: oklch(0.22 0.02 258);
+    --card-foreground: oklch(0.93 0.012 258);
+    --popover: oklch(0.23 0.02 258);
+    --popover-foreground: oklch(0.93 0.012 258);
+    --primary: oklch(0.88 0.04 258);
+    --primary-foreground: oklch(0.18 0.02 258);
+    --secondary: oklch(0.27 0.022 258);
+    --secondary-foreground: oklch(0.92 0.012 258);
+    --muted: oklch(0.27 0.02 258);
+    --muted-foreground: oklch(0.68 0.02 258);
+    --accent: oklch(0.3 0.028 258);
+    --accent-foreground: oklch(0.95 0.01 258);
+    --destructive: oklch(0.62 0.2 25);
+    --border: oklch(0.94 0.01 258 / 9%);
+    --input: oklch(0.94 0.01 258 / 11%);
+    --ring: oklch(0.62 0.06 258);
     --chart-1: oklch(0.809 0.105 251.813);
     --chart-2: oklch(0.623 0.214 259.815);
     --chart-3: oklch(0.546 0.245 262.881);
@@ -119,10 +120,19 @@
   * {
     @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
-    }
   html {
     @apply font-sans;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    }
+  body {
+    @apply min-h-dvh bg-background text-foreground antialiased;
+    font-weight: 350;
+    background-image: radial-gradient(
+      ellipse 120% 70% at 50% -15%,
+      oklch(0.28 0.045 270 / 0.22),
+      transparent 55%
+    );
     }
 }

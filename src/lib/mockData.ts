@@ -9,6 +9,7 @@ export const initialPosts: Post[] = [
     author: "관리자",
     createdAt: "2026-03-20T09:00:00.000Z",
     likes: 5,
+    section: "notice",
     comments: [
       {
         id: "c1",
@@ -32,6 +33,7 @@ export const initialPosts: Post[] = [
     author: "지원",
     createdAt: "2026-03-21T14:20:00.000Z",
     likes: 12,
+    section: "free",
     comments: [
       {
         id: "c3",
@@ -61,6 +63,7 @@ export const initialPosts: Post[] = [
     author: "민준",
     createdAt: "2026-03-22T11:30:00.000Z",
     likes: 3,
+    section: "free",
     comments: [
       {
         id: "c6",
@@ -78,6 +81,7 @@ export const initialPosts: Post[] = [
     author: "하은",
     createdAt: "2026-03-23T16:00:00.000Z",
     likes: 8,
+    section: "free",
     comments: [
       {
         id: "c7",
@@ -102,13 +106,18 @@ export const initialPosts: Post[] = [
     author: "서준",
     createdAt: "2026-03-24T10:00:00.000Z",
     likes: 15,
+    section: "free",
     comments: [],
   },
 ];
 
 export const getPosts = (): Post[] => {
   const data = localStorage.getItem("posts");
-  return data ? JSON.parse(data) : initialPosts;
+  const posts = data ? (JSON.parse(data) as Post[]) : initialPosts;
+  return posts.map((post) => ({
+    ...post,
+    section: post.section ?? "free",
+  }));
 };
 
 export const savePosts = (posts: Post[]) => {
